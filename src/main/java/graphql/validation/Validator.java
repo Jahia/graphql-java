@@ -29,6 +29,7 @@ import graphql.validation.rules.UniqueOperationNames;
 import graphql.validation.rules.VariableDefaultValuesOfCorrectType;
 import graphql.validation.rules.VariableTypesMatchRule;
 import graphql.validation.rules.VariablesAreInputTypes;
+import graphql.validation.rules.WithinMaxNodesThreshold;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -117,6 +118,8 @@ public class Validator {
         DeferredMustBeOnAllFields deferredMustBeOnAllFields = new DeferredMustBeOnAllFields(validationContext, validationErrorCollector);
         rules.add(deferredMustBeOnAllFields);
 
+        WithinMaxNodesThreshold withinMaxNodesThreshold = new WithinMaxNodesThreshold(validationContext, validationErrorCollector);
+        rules.add(withinMaxNodesThreshold);
         return rules;
     }
 }
