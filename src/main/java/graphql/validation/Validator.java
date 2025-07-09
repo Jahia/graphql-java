@@ -29,7 +29,6 @@ import graphql.validation.rules.UniqueOperationNames;
 import graphql.validation.rules.VariableDefaultValuesOfCorrectType;
 import graphql.validation.rules.VariableTypesMatchRule;
 import graphql.validation.rules.VariablesAreInputTypes;
-import graphql.validation.rules.WithinMaxNodesThreshold;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,14 +36,20 @@ import java.util.List;
 @Internal
 public class Validator {
 
+    static int MAX_VALIDATION_ERRORS = 100; // Copied from https://github.com/graphql-java/graphql-java/blob/master/src/main/java/graphql/validation/Validator.java#L49
+
     public List<ValidationError> validateDocument(GraphQLSchema schema, Document document) {
         ValidationContext validationContext = new ValidationContext(schema, document);
 
 
-        ValidationErrorCollector validationErrorCollector = new ValidationErrorCollector();
+        ValidationErrorCollector validationErrorCollector = new ValidationErrorCollector(MAX_VALIDATION_ERRORS);
         List<AbstractRule> rules = createRules(validationContext, validationErrorCollector);
         LanguageTraversal languageTraversal = new LanguageTraversal();
-        languageTraversal.traverse(document, new RulesVisitor(validationContext, rules));
+        try {
+            languageTraversal.traverse(document, new RulesVisitor(validationContext, rules));
+        } catch (ValidationErrorCollector.MaxValidationErrorsReached ignored) {
+            // if we have generated enough errors, then we can shortcut out
+        }
 
         return validationErrorCollector.getErrors();
     }
@@ -118,8 +123,6 @@ public class Validator {
         DeferredMustBeOnAllFields deferredMustBeOnAllFields = new DeferredMustBeOnAllFields(validationContext, validationErrorCollector);
         rules.add(deferredMustBeOnAllFields);
 
-        WithinMaxNodesThreshold withinMaxNodesThreshold = new WithinMaxNodesThreshold(validationContext, validationErrorCollector);
-        rules.add(withinMaxNodesThreshold);
         return rules;
     }
 }
