@@ -24,7 +24,7 @@ jobs:
 
 
       - name: Build with Gradle
-        run: ./gradlew clean test
+        run: ./gradlew clean test jar
 
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
