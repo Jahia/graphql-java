@@ -45,6 +45,7 @@ public class Parser {
             this.maxRuleDepthCheckEnabled = false;
             this.maxQueryTokens = Integer.MAX_VALUE;
             this.maxQueryTokensCheckEnabled = false;
+            log.debug("Parser checks are disabled");
         } else {
             this.maxQueryCharacters = getSystemEnvOrDefault("GRAPHQL_MAX_QUERY_CHARACTERS", MAX_QUERY_CHARACTERS);
             this.maxQueryCharactersCheckEnabled = this.maxQueryCharacters > 0;
@@ -52,7 +53,10 @@ public class Parser {
             this.maxRuleDepthCheckEnabled = this.maxRuleDepth > 0;
             this.maxQueryTokens = getSystemEnvOrDefault("GRAPHQL_MAX_QUERY_TOKENS", MAX_QUERY_TOKENS);
             this.maxQueryTokensCheckEnabled = this.maxQueryTokens > 0;
-            log.debug("Parser settings: maxQueryCharacters={}, maxRuleDepth={}, maxQueryTokens={}", maxQueryCharacters, maxRuleDepth, maxQueryTokens);
+            log.debug("Parser settings:");
+            log.debug("  - max query characters: {} (enabled: {})", maxQueryCharacters, maxQueryCharactersCheckEnabled);
+            log.debug("  - max rule depth: {} (enabled: {})", maxRuleDepth, maxRuleDepthCheckEnabled);
+            log.debug("  - max query tokens: {} (enabled: {})", maxQueryTokens, maxQueryTokensCheckEnabled);
         }
     }
 
