@@ -78,7 +78,9 @@ public class SchemaParser {
 
     public TypeDefinitionRegistry parseImpl(Reader schemaInput) {
         try {
-            Parser parser = new Parser();
+            // disable all checks (max depth, max characters, etc.) when parsing the schema as the call path is not facing attackers
+            // This aligns with the default options set in ParserOptions#defaultJvmSdlParserOptions: https://github.com/graphql-java/graphql-java/blob/master/src/main/java/graphql/parser/ParserOptions.java#L80
+            Parser parser = new Parser(true);
             Document document = parser.parseDocument(schemaInput);
 
             return buildRegistry(document);
