@@ -31,14 +31,33 @@ public class Parser {
     private final int MAX_RULE_DEPTH = 500; // Copied from https://github.com/graphql-java/graphql-java/blob/master/src/main/java/graphql/parser/ParserOptions.java#L54
     private final int MAX_QUERY_TOKENS = 15_000; // Copied from https://github.com/graphql-java/graphql-java/blob/master/src/main/java/graphql/parser/ParserOptions.java#L35
     private final int maxQueryCharacters;
+    private final boolean maxQueryCharactersCheckEnabled;
     private final int maxRuleDepth;
+    private final boolean maxRuleDepthCheckEnabled;
     private final int maxQueryTokens;
+    private final boolean maxQueryTokensCheckEnabled;
+
+    public Parser(boolean disableChecks) {
+        if (disableChecks) {
+            this.maxQueryCharacters = Integer.MAX_VALUE;
+            this.maxQueryCharactersCheckEnabled = false;
+            this.maxRuleDepth = Integer.MAX_VALUE;
+            this.maxRuleDepthCheckEnabled = false;
+            this.maxQueryTokens = Integer.MAX_VALUE;
+            this.maxQueryTokensCheckEnabled = false;
+        } else {
+            this.maxQueryCharacters = getSystemEnvOrDefault("GRAPHQL_MAX_QUERY_CHARACTERS", MAX_QUERY_CHARACTERS);
+            this.maxQueryCharactersCheckEnabled = this.maxQueryCharacters > 0;
+            this.maxRuleDepth = getSystemEnvOrDefault("GRAPHQL_MAX_RULE_DEPTH", MAX_RULE_DEPTH);
+            this.maxRuleDepthCheckEnabled = this.maxRuleDepth > 0;
+            this.maxQueryTokens = getSystemEnvOrDefault("GRAPHQL_MAX_QUERY_TOKENS", MAX_QUERY_TOKENS);
+            this.maxQueryTokensCheckEnabled = this.maxQueryTokens > 0;
+            log.debug("Parser settings: maxQueryCharacters={}, maxRuleDepth={}, maxQueryTokens={}", maxQueryCharacters, maxRuleDepth, maxQueryTokens);
+        }
+    }
 
     public Parser() {
-        this.maxQueryCharacters = getSystemEnvOrDefault("GRAPHQL_MAX_QUERY_CHARACTERS", MAX_QUERY_CHARACTERS);
-        this.maxRuleDepth = getSystemEnvOrDefault("GRAPHQL_MAX_RULE_DEPTH", MAX_RULE_DEPTH);
-        this.maxQueryTokens = getSystemEnvOrDefault("GRAPHQL_MAX_QUERY_TOKENS", MAX_QUERY_TOKENS);
-        log.debug("Parser settings: maxQueryCharacters={}, maxRuleDepth={}, maxQueryTokens={}", maxQueryCharacters, maxRuleDepth, maxQueryTokens);
+        this(false);
     }
 
     private int getSystemEnvOrDefault(String systemEnv, int defaultValue) {
@@ -76,7 +95,7 @@ public class Parser {
                     .reader(reader, null).build();
         }
 
-        SafeTokenReader safeReader = new SafeTokenReader(multiSourceReader, maxQueryCharacters);
+        Reader safeReader = maxQueryCharactersCheckEnabled ? new SafeTokenReader(multiSourceReader, maxQueryCharacters) : multiSourceReader;
         CodePointCharStream charStream;
         try {
             charStream = CharStreams.fromReader(safeReader);
@@ -95,45 +114,48 @@ public class Parser {
         ExtendedBailStrategy bailStrategy = new ExtendedBailStrategy(multiSourceReader);
         parser.setErrorHandler(bailStrategy);
 
-        ParseTreeListener listener = new GraphqlBaseListener() {
-            int count = 0;
-            int depth = 0;
+        if (maxRuleDepthCheckEnabled || maxQueryTokensCheckEnabled) {
+            // only create the parser listener if at least one check is enabled
+            ParseTreeListener listener = new GraphqlBaseListener() {
+                int count = 0;
+                int depth = 0;
 
 
-            @Override
-            public void enterEveryRule(ParserRuleContext ctx) {
-                depth++;
-                if (depth > maxRuleDepth) {
-                    Token startToken = ctx.getStart();
-                    SourceLocation sourceLocation = mkSourceLocation(multiSourceReader, startToken);
-                    // Copied from 'ParseCancelled.tooDeep' error message. See https://github.com/graphql-java/graphql-java/blob/master/src/main/resources/i18n/Parsing.properties#L23
-                    throw new InvalidSyntaxException(sourceLocation,
-                            String.format("More than %s deep 'grammar' rules have been entered. To prevent Denial Of Service attacks, parsing has been cancelled.", maxRuleDepth),
-                            null, startToken.getText(), null);
+                @Override
+                public void enterEveryRule(ParserRuleContext ctx) {
+                    depth++;
+                    if (maxRuleDepthCheckEnabled && depth > maxRuleDepth) {
+                        Token startToken = ctx.getStart();
+                        SourceLocation sourceLocation = mkSourceLocation(multiSourceReader, startToken);
+                        // Copied from 'ParseCancelled.tooDeep' error message. See https://github.com/graphql-java/graphql-java/blob/master/src/main/resources/i18n/Parsing.properties#L23
+                        throw new InvalidSyntaxException(sourceLocation,
+                                String.format("More than %s deep 'grammar' rules have been entered. To prevent Denial Of Service attacks, parsing has been cancelled.", maxRuleDepth),
+                                null, startToken.getText(), null);
+                    }
                 }
-            }
 
-            @Override
-            public void exitEveryRule(ParserRuleContext ctx) {
-                depth--;
-            }
-
-            @Override
-            public void visitTerminal(TerminalNode node) {
-
-                final Token token = node.getSymbol();
-
-                count++;
-                if (count > maxQueryTokens) {
-                    SourceLocation sourceLocation = mkSourceLocation(multiSourceReader, token);
-                    // Copied from 'ParseCancelled.full' error message. See https://github.com/graphql-java/graphql-java/blob/master/src/main/resources/i18n/Parsing.properties#L22
-                    throw new InvalidSyntaxException(sourceLocation,
-                            String.format("More than %s 'grammar' tokens have been presented. To prevent Denial Of Service attacks, parsing has been cancelled.", maxQueryTokens),
-                            null, token.getText(), null);
+                @Override
+                public void exitEveryRule(ParserRuleContext ctx) {
+                    depth--;
                 }
-            }
-        };
-        parser.addParseListener(listener);
+
+                @Override
+                public void visitTerminal(TerminalNode node) {
+
+                    final Token token = node.getSymbol();
+
+                    count++;
+                    if (maxQueryTokensCheckEnabled && count > maxQueryTokens) {
+                        SourceLocation sourceLocation = mkSourceLocation(multiSourceReader, token);
+                        // Copied from 'ParseCancelled.full' error message. See https://github.com/graphql-java/graphql-java/blob/master/src/main/resources/i18n/Parsing.properties#L22
+                        throw new InvalidSyntaxException(sourceLocation,
+                                String.format("More than %s 'grammar' tokens have been presented. To prevent Denial Of Service attacks, parsing has been cancelled.", maxQueryTokens),
+                                null, token.getText(), null);
+                    }
+                }
+            };
+            parser.addParseListener(listener);
+        }
         GraphqlAntlrToLanguage toLanguage = new GraphqlAntlrToLanguage(tokens, multiSourceReader);
         GraphqlParser.DocumentContext documentContext = parser.document();
 

@@ -11,7 +11,6 @@ import graphql.schema.idl.SchemaParser
 import graphql.schema.idl.SchemaPrinter
 import graphql.schema.idl.TypeDefinitionRegistry
 import groovy.json.JsonSlurper
-import spock.lang.Ignore
 import spock.lang.Specification
 
 import static graphql.schema.idl.RuntimeWiring.newRuntimeWiring
@@ -54,7 +53,6 @@ class IntrospectionJsonBugTest extends Specification {
     def schemaPrinter = new SchemaPrinter(options)
 
 
-    @Ignore // disabled as the test file is too large
     def "1509 - can load data and generate schema from json first bug"() {
 
         when:
