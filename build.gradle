@@ -162,6 +162,35 @@ publishing {
             artifact javadocJar {
                 classifier "javadoc"
             }
+            pom.withXml {
+                // The ANTLR-related code below--introduced in `1ac98bf`--addresses an issue with
+                // the Gradle ANTLR plugin. `1ac98bf` can be reverted and this comment removed once
+                // that issue is fixed and Gradle upgraded. See https://goo.gl/L92KiF and https://goo.gl/FY0PVR.
+                Node pomNode = asNode()
+                pomNode.dependencies.'*'.findAll() {
+                    it.artifactId.text() == 'antlr4'
+                }.each() {
+                    it.parent().remove(it)
+                }
+                pomNode.children().last() + {
+                    resolveStrategy = Closure.DELEGATE_FIRST
+                    name 'graphql-java'
+                    description 'Fork of GraphqL Java by Jahia'
+                    url "https://github.com/Jahia/graphql-java"
+                    scm {
+                        url "scm:git:git@github.com:Jahia/graphql-java.git"
+                        connection "scm:git:git@github.com:Jahia/graphql-java.git"
+                        developerConnection "scm:git:git@github.com:Jahia/graphql-java.git"
+                    }
+                    licenses {
+                        license {
+                            name 'MIT'
+                            url 'https://github.com/Jahia/graphql-java/blob/master/LICENSE.md'
+                            distribution 'repo'
+                        }
+                    }
+                }
+            }
         }
     }
 }
