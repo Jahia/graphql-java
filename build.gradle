@@ -133,14 +133,6 @@ allprojects {
 }
 
 publishing {
-    publications {
-        maven(MavenPublication) {
-            groupId = 'io.github.bensku'
-            artifactId = 'java-ts-bind'
-            version = '1.0.0-jahia-3'
-            from components.java
-        }
-    }
     repositories {
         maven {
             name = "jahia-releases"
