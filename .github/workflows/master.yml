@@ -1,9 +1,9 @@
-name: Master Build and Publish
-# For master push: Builds and publishes the development version to maven
+name: Main Build and Publish
+# For main push: Builds and publishes the development version to maven
 on:
   push:
     branches:
-      - master
+      - main
 permissions: # For test summary bot
   checks: write
 jobs:

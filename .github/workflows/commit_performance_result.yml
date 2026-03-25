@@ -8,7 +8,7 @@ on:
       branch:
         description: 'the branch which the results should be commited in'
         required: false
-        default: 'master'
+        default: 'main'
 
 permissions:
   id-token: write # This is required for requesting the JWT

@@ -3,10 +3,10 @@ name: Pull Request Build
 on:
   push:
     branches:
-      - '!master'
+      - '!main'
   pull_request:
     branches:
-      - master
+      - main
       - 23.x
       - 22.x
       - 21.x
